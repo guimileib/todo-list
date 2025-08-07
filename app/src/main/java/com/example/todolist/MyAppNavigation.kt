@@ -17,6 +17,7 @@ import np.com.bimalkafle.firebaseauthdemoapp.AuthViewModel
 import np.com.bimalkafle.firebaseauthdemoapp.pages.HomePage
 import np.com.bimalkafle.firebaseauthdemoapp.pages.LoginPage
 import np.com.bimalkafle.firebaseauthdemoapp.pages.SignupPage
+import np.com.bimalkafle.firebaseauthdemoapp.pages.WelcomePage
 
 @Composable
 fun MyAppNavigation(modifier: Modifier = Modifier, authViewModel: AuthViewModel) {
@@ -34,6 +35,9 @@ fun MyAppNavigation(modifier: Modifier = Modifier, authViewModel: AuthViewModel)
         }
         composable("signup") {
             SignupPage(modifier,navController,authViewModel)
+        }
+        composable("welcome") {
+            WelcomePage(modifier,navController,authViewModel)
         }
         composable("home") {
             HomePage(modifier,navController,authViewModel)
@@ -70,6 +74,7 @@ fun MyAppNavigation(modifier: Modifier = Modifier, authViewModel: AuthViewModel)
 object AppScreen {
     const val LOGIN = "login"
     const val SIGNUP = "signup"
+    const val WELCOME = "welcome"
     const val HOME = "home"
     const val TODO_LIST = "todo_list"
     const val ADD_EDIT_TODO = "add_edit_todo"

@@ -1,107 +1,169 @@
 package np.com.bimalkafle.firebaseauthdemoapp.pages
 
 import android.widget.Toast
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import kotlinx.coroutines.delay
 import np.com.bimalkafle.firebaseauthdemoapp.AuthState
 import np.com.bimalkafle.firebaseauthdemoapp.AuthViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginPage(modifier: Modifier = Modifier,navController: NavController,authViewModel: AuthViewModel) {
 
-
-    var email by remember {
-        mutableStateOf("")
-    }
-
-    var password by remember {
-        mutableStateOf("")
-    }
-
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var showSnackbar by remember { mutableStateOf(false) }
+    var snackbarMessage by remember { mutableStateOf("") }
+    var isError by remember { mutableStateOf(false) }
+    
     val authState = authViewModel.authState.observeAsState()
     val context = LocalContext.current
+    
+    // Animação de shake para campos de erro
+    val shakeOffset by animateFloatAsState(
+        targetValue = if (isError) 1f else 0f,
+        animationSpec = tween(100),
+        finishedListener = { isError = false }
+    )
+    
+    // Animação de escala para o botão
+    val buttonScale by animateFloatAsState(
+        targetValue = if (authState.value is AuthState.Loading) 0.95f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+    )
 
+    // Observar mudanças no estado de autenticação
     LaunchedEffect(authState.value) {
-        when(authState.value){
-            is AuthState.Authenticated -> navController.navigate("todo_list")
-            is AuthState.Error -> Toast.makeText(context,
-                (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
+        when(val state = authState.value){
+            is AuthState.Authenticated -> {
+                navController.navigate("welcome") {
+                    popUpTo("login") { inclusive = true }
+                }
+            }
+            is AuthState.Error -> {
+                snackbarMessage = state.message
+                showSnackbar = true
+                isError = true
+            }
             else -> Unit
         }
     }
 
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(text = "Login Page", fontSize = 32.sp)
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = {
-                email = it
-            },
-            label = {
-                Text(text = "Email")
-            }
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = {
-                password = it
-            },
-            label = {
-                Text(text = "Password")
-            }
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(onClick = {
-            authViewModel.login(email,password)
-        },
-            enabled = authState.value != AuthState.Loading
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Login")
+            Text(text = "Login", fontSize = 32.sp, color = MaterialTheme.colorScheme.primary)
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Campo de email com animação
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text(text = "E-mail") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(x = (shakeOffset * 10).dp),
+                isError = isError,
+                colors = OutlinedTextFieldDefaults.colors(
+                    errorBorderColor = MaterialTheme.colorScheme.error,
+                    errorLabelColor = MaterialTheme.colorScheme.error
+                ),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Campo de senha com animação
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text(text = "Senha") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(x = (shakeOffset * 10).dp),
+                isError = isError,
+                colors = OutlinedTextFieldDefaults.colors(
+                    errorBorderColor = MaterialTheme.colorScheme.error,
+                    errorLabelColor = MaterialTheme.colorScheme.error
+                ),
+                shape = RoundedCornerShape(12.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Botão de login com animação
+            Button(
+                onClick = {
+                    authViewModel.login(email, password)
+                },
+                enabled = authState.value != AuthState.Loading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .scale(buttonScale),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                if (authState.value is AuthState.Loading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text(text = "Entrar", fontSize = 16.sp)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            TextButton(onClick = {
+                navController.navigate("signup")
+            }) {
+                Text(text = "Não tem uma conta? Cadastre-se")
+            }
         }
-
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        TextButton(onClick = {
-            navController.navigate("signup")
-        }) {
-            Text(text = "Don't have an account, Signup")
+        
+        // Snackbar customizado
+        if (showSnackbar) {
+            LaunchedEffect(showSnackbar) {
+                delay(3000)
+                showSnackbar = false
+            }
+            
+            Card(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    text = snackbarMessage,
+                    modifier = Modifier.padding(16.dp),
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    fontSize = 14.sp
+                )
+            }
         }
-
     }
-
 }
